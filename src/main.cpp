@@ -2,6 +2,7 @@
 #include <cstdlib>
 
 #include "sdl2/sdl2.h"
+#include "app/app.h"
 
 int main(int argc, char *argv[])
 {
@@ -16,19 +17,17 @@ int main(int argc, char *argv[])
             SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE,
             SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
     );
+    
+    App::Context app(16'000);
 
-    SDL_Event ev;
-    bool quit = false;
-
-    while (!quit) {
+    while (app.shouldContinue()) {
+        SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
-            if (ev.type == SDL_QUIT) {
-                quit = true;
-                break;
-            }
+            app.handleEvent(&ev);
         }
 
         sdl.renderClear();
+        app.renderApp(&sdl);
         sdl.renderPresent();
     }
 
