@@ -18,6 +18,8 @@ namespace Tracker
 
         virtual void onNewAudio(const Eigen::ArrayXf &data);
 
+        float pitch();
+
     private:
         void performAnalysis(const Eigen::ArrayXf &data);
 
@@ -28,6 +30,8 @@ namespace Tracker
 
         Eigen::ArrayXf mData;
         std::mutex mDataLock;
+
+        std::atomic<float> mPitch;
     };
 }
 

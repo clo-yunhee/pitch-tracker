@@ -6,7 +6,12 @@
 App::Context::Context(int sampleRate)
     : mContinue(true),
       mAudio(new SDL2::Audio(sampleRate)),
-      mTrackerContext(new Tracker::Context(sampleRate))
+      mTrackerContext(new Tracker::Context(sampleRate)),
+      mUiFontBig(new SDL2::Font("Montserrat.ttf", 32)),
+      mUiFontMedium(new SDL2::Font("Montserrat.ttf", 24)),
+      mUiFontSmall(new SDL2::Font("Montserrat.ttf", 18)),    
+      mPitchLimit(170),
+      mPitchLimitMode(PITCHLIMIT_MIN)
 {
     mAudio->addListener(mTrackerContext);
     mAudio->resume();
@@ -14,6 +19,9 @@ App::Context::Context(int sampleRate)
 
 App::Context::~Context()
 {
+    delete mUiFontBig;
+    delete mUiFontMedium;
+    delete mUiFontSmall;
     delete mAudio;
     delete mTrackerContext;
 }
@@ -33,6 +41,9 @@ void App::Context::handleEvent(const SDL_Event *ev)
     case SDL_KEYUP:
         handleKeyupEvent(ev->key.keysym.sym);
         break;
+    case SDL_MOUSEWHEEL:
+        handleMousewheelEvent((ev->wheel.direction == SDL_MOUSEWHEEL_NORMAL) ? ev->wheel.y : -ev->wheel.y);
+        break;
     default:
         break;
     }
@@ -40,7 +51,86 @@ void App::Context::handleEvent(const SDL_Event *ev)
 
 void App::Context::renderApp(SDL2::Context *sdl)
 {
-    
+    int targetWidth, targetHeight;
+    SDL_GetWindowSize(sdl->window(), &targetWidth, &targetHeight);
+
+    constexpr int maxLen = 64;
+    char string[maxLen];
+    SDL2::TexturePtr stringTex;
+    int w, h;
+    SDL_Rect dst;
+    SDL_Color color;
+
+    float pitch = mTrackerContext->pitch();
+
+    // Background.
+    color = {40, 42, 54, 255};
+    if (pitch != 0 &&
+            ((mPitchLimitMode == PITCHLIMIT_MIN && pitch <= mPitchLimit)
+                || (mPitchLimitMode == PITCHLIMIT_MAX && pitch >= mPitchLimit))) {
+        color = {255, 85, 85, 127};
+    }
+    dst = {0, 0, targetWidth, targetHeight};
+    SDL_SetRenderDrawBlendMode(sdl->renderer(), SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(sdl->renderer(), color.r, color.g, color.b, color.a);
+    SDL_RenderFillRect(sdl->renderer(), &dst);
+
+    // Current pitch estimate.
+    if (pitch != 0) {
+        snprintf(string, maxLen, "%d", (int) mTrackerContext->pitch());
+        color = {248, 248, 242, 255};
+    }
+    else {
+        strncpy(string, "---", maxLen);
+        color = {98, 114, 164, 255};
+    }
+
+    mUiFontBig->querySize(string, &dst.w, &dst.h);
+    mUiFontMedium->querySize(" Hz", &w, &h);
+    stringTex = mUiFontBig->renderText(sdl->renderer(), string, color);
+    dst.x = targetWidth / 2 - (dst.w + w) / 2;
+    dst.y = targetHeight / 2 - dst.h / 2;
+    SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &dst);
+  
+    color = {149, 149, 145, 255};
+    stringTex = mUiFontMedium->renderText(sdl->renderer(), " Hz", color);
+    dst = {dst.x + dst.w, targetHeight / 2 - h / 2, w, h};
+    SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &dst);
+
+    // Pitch floor text.
+    if (mPitchLimitMode == PITCHLIMIT_MIN) {
+        strncpy(string, "Pitch floor: ", maxLen);
+    }
+    else {
+        strncpy(string, "Pitch ceiling: ", maxLen);
+    }
+
+    mUiFontSmall->querySize(string, &dst.w, &dst.h);
+    color = {149, 149, 145, 255};
+    stringTex = mUiFontSmall->renderText(sdl->renderer(), string, color);
+    dst.x = 15;
+    dst.y = (targetHeight - 1) - 10 - dst.h;
+    SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &dst);
+
+    snprintf(string, maxLen, "%d", mPitchLimit);
+    mUiFontSmall->querySize(string, &w, &h);
+    color = {248, 248, 242, 255};
+    if (pitch != 0 &&
+            ((mPitchLimitMode == PITCHLIMIT_MIN && pitch <= mPitchLimit)
+                || (mPitchLimitMode == PITCHLIMIT_MAX && pitch >= mPitchLimit))) {
+        color = {255, 85, 85, 127};
+    }
+    stringTex = mUiFontSmall->renderText(sdl->renderer(), string, color);
+    dst.x += dst.w;
+    dst.w = w;
+    SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &dst);
+
+    mUiFontSmall->querySize(" Hz", &w, &h);
+    color = {149, 149, 145, 255};
+    stringTex = mUiFontSmall->renderText(sdl->renderer(), " Hz", color);
+    dst.x += dst.w;
+    dst.w = w;
+    SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &dst);
 }
 
 bool App::Context::shouldContinue() const
@@ -50,8 +140,27 @@ bool App::Context::shouldContinue() const
 
 void App::Context::handleKeydownEvent(const SDL_Keycode key)
 {
+    if (key == SDLK_UP) {
+        mPitchLimit += 2;
+    }
+    else if (key == SDLK_DOWN) {
+        mPitchLimit -= 2;
+    }
 }
 
 void App::Context::handleKeyupEvent(const SDL_Keycode key)
 {
+    if (key == SDLK_m) {
+        if (mPitchLimitMode == PITCHLIMIT_MIN) {
+            mPitchLimitMode = PITCHLIMIT_MAX;
+        }
+        else if (mPitchLimitMode == PITCHLIMIT_MAX) {
+            mPitchLimitMode = PITCHLIMIT_MIN;
+        }
+    }
+}
+
+void App::Context::handleMousewheelEvent(const int y)
+{
+    mPitchLimit += y * 2;
 }

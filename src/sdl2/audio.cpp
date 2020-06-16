@@ -4,7 +4,7 @@
 using namespace Eigen;
 
 SDL2::Audio::Audio(int sampleRate)
-    : mSampleRate(sampleRate), mInternalBufferSize(1024)
+    : mSampleRate(sampleRate), mInternalBufferSize(512)
 {
     SDL_AudioSpec want, have;
     SDL_zero(want);

@@ -52,7 +52,7 @@ void SDL2::Context::destroyWindow()
 void SDL2::Context::renderClear()
 {
     if (mRenderer != nullptr) {
-        SDL_SetRenderDrawColor(mRenderer, 0x00, 0x00, 0x00, 0x00);
+        SDL_SetRenderDrawColor(mRenderer, 0, 0, 0, 255);
         SDL_RenderClear(mRenderer);
     }
 }

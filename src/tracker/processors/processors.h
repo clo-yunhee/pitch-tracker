@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iostream>
 #include <numeric>
+#include <vector>
 
 using namespace Eigen;
 
@@ -20,7 +21,11 @@ namespace Processors
 
     ArrayXf hanning(int L);
 
-    float pitchAMDF_M(const ArrayXf &x, int sampleRate, float minimumPitch, float maximumPitch, float alpha, float ratio, float sensitivity);
+    float pitchACF(const ArrayXf &x, int sampleRate, float minimumPitch, float maximumPitch, float cutoff);
+
+    float pitchAMDF_M(const ArrayXf &x, int sampleRate, float minimumPitch, float maximumPitch, float alpha);
+
+    std::vector<int> pickPeaks(Ref<const ArrayXf> x);
 }
 
 #endif // TRACKER_PROCESSORS_PROCESSORS_H
