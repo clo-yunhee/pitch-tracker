@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     sdl.createWindow(
             "Pitch tracker beta",
             SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-            640, 480,
+            853, 480,
             SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE,
             SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
     );

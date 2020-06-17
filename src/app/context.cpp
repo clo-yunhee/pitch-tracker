@@ -11,7 +11,10 @@ App::Context::Context(int sampleRate)
       mUiFontMedium(new SDL2::Font("Montserrat.ttf", 24)),
       mUiFontSmall(new SDL2::Font("Montserrat.ttf", 18)),    
       mPitchLimit(170),
-      mPitchLimitMode(PITCHLIMIT_MIN)
+      mPitchLimitMode(PITCHLIMIT_MIN),
+      mBgFadeTime(100),
+      mBgAlpha(0),
+      mBgLastTime(SDL_GetTicks())
 {
     mAudio->addListener(mTrackerContext);
     mAudio->resume();
@@ -63,17 +66,38 @@ void App::Context::renderApp(SDL2::Context *sdl)
 
     float pitch = mTrackerContext->pitch();
 
-    // Background.
-    color = {40, 42, 54, 255};
-    if (pitch != 0 &&
+    int bgSgn;
+    if  (pitch != 0 &&
             ((mPitchLimitMode == PITCHLIMIT_MIN && pitch <= mPitchLimit)
                 || (mPitchLimitMode == PITCHLIMIT_MAX && pitch >= mPitchLimit))) {
-        color = {255, 85, 85, 127};
+        bgSgn = 1;
     }
+    else {
+        bgSgn = -1;
+    }
+
+    int now = SDL_GetTicks();
+    if (now - mBgLastTime > 0) {
+        mBgFrac += (float) (bgSgn * (now - mBgLastTime)) / (float) mBgFadeTime;
+        mBgFrac = std::clamp(mBgFrac, 0.0F, 1.0F);
+        mBgAlpha = (Uint8) round(255 * mBgFrac * mBgFrac * (3.0F - 2.0F * mBgFrac));
+        mBgLastTime = now;
+    }
+
+    // Background.
+    color = {40, 42, 54, 255};
     dst = {0, 0, targetWidth, targetHeight};
-    SDL_SetRenderDrawBlendMode(sdl->renderer(), SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(sdl->renderer(), color.r, color.g, color.b, color.a);
     SDL_RenderFillRect(sdl->renderer(), &dst);
+
+    // Pitch floor color overlay.
+    if (mBgAlpha > 8) {
+        color = {255, 85, 85, Uint8(mBgAlpha / 6)};
+        dst = {0, 0, targetWidth, targetHeight};
+        SDL_SetRenderDrawBlendMode(sdl->renderer(), SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(sdl->renderer(), color.r, color.g, color.b, color.a);
+        SDL_RenderFillRect(sdl->renderer(), &dst);
+    }
 
     // Current pitch estimate.
     if (pitch != 0) {
@@ -97,7 +121,23 @@ void App::Context::renderApp(SDL2::Context *sdl)
     dst = {dst.x + dst.w, targetHeight / 2 - h / 2, w, h};
     SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &dst);
 
-    // Pitch floor text.
+    // Pitch floor alert text.
+    if (mBgAlpha > 16) {
+        if (mPitchLimitMode == PITCHLIMIT_MIN) {
+            strncpy(string, "Too low!", maxLen);
+        }
+        else {
+            strncpy(string, "Too high!", maxLen);
+        }
+        mUiFontSmall->querySize(string, &dst.w, &dst.h);
+        color = {255, 85, 85, mBgAlpha};
+        stringTex = mUiFontSmall->renderText(sdl->renderer(), string, color);
+        dst.x = targetWidth / 2 - dst.w / 2;
+        dst.y += dst.h + 30;
+        SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &dst);
+    }
+
+    // Pitch floor setting text.
     if (mPitchLimitMode == PITCHLIMIT_MIN) {
         strncpy(string, "Pitch floor: ", maxLen);
     }
@@ -115,10 +155,8 @@ void App::Context::renderApp(SDL2::Context *sdl)
     snprintf(string, maxLen, "%d", mPitchLimit);
     mUiFontSmall->querySize(string, &w, &h);
     color = {248, 248, 242, 255};
-    if (pitch != 0 &&
-            ((mPitchLimitMode == PITCHLIMIT_MIN && pitch <= mPitchLimit)
-                || (mPitchLimitMode == PITCHLIMIT_MAX && pitch >= mPitchLimit))) {
-        color = {255, 85, 85, 127};
+    if (mBgAlpha > 8) {
+        color = {255, 85, 85, mBgAlpha};
     }
     stringTex = mUiFontSmall->renderText(sdl->renderer(), string, color);
     dst.x += dst.w;
@@ -162,5 +200,5 @@ void App::Context::handleKeyupEvent(const SDL_Keycode key)
 
 void App::Context::handleMousewheelEvent(const int y)
 {
-    mPitchLimit += y * 2;
+    mPitchLimit += 2 * y;
 }

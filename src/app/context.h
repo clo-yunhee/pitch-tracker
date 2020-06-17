@@ -47,6 +47,12 @@ namespace App
 
         PitchLimitMode mPitchLimitMode;
         int mPitchLimit;
+
+        int mBgLastTime;
+        int mBgFadeTime;
+        float mBgFrac;
+        Uint8 mBgAlpha;
+
     };
 }
 
