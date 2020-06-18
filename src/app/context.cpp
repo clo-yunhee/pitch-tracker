@@ -91,10 +91,10 @@ void App::Context::renderApp(SDL2::Context *sdl)
     SDL_RenderFillRect(sdl->renderer(), &dst);
 
     // Pitch floor color overlay.
-    if (mBgAlpha > 8) {
-        color = {255, 85, 85, Uint8(mBgAlpha / 6)};
+    if (mBgAlpha >= 48) { 
+        color = {255, 85, 85, Uint8(mBgAlpha / 48)};
         dst = {0, 0, targetWidth, targetHeight};
-        SDL_SetRenderDrawBlendMode(sdl->renderer(), SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawBlendMode(sdl->renderer(), SDL_BLENDMODE_ADD);
         SDL_SetRenderDrawColor(sdl->renderer(), color.r, color.g, color.b, color.a);
         SDL_RenderFillRect(sdl->renderer(), &dst);
     }
@@ -122,7 +122,7 @@ void App::Context::renderApp(SDL2::Context *sdl)
     SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &dst);
 
     // Pitch floor alert text.
-    if (mBgAlpha > 16) {
+    if (mBgAlpha >= 12) {
         if (mPitchLimitMode == PITCHLIMIT_MIN) {
             strncpy(string, "Too low!", maxLen);
         }

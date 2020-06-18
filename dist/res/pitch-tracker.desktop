@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Terminal=false
+Exec=pitch-tracker
+Name=Pitch tracker
+Comment=Real-time pitch tracking software
+Icon=pitch-tracker
+Categories=Utility;Audio;Science;
