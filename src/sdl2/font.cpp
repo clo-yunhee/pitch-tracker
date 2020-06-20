@@ -60,3 +60,8 @@ int SDL2::Font::descent()
 {
     return TTF_FontDescent(mFont);
 }
+
+int SDL2::Font::lineSkip()
+{
+    return TTF_FontLineSkip(mFont);
+}

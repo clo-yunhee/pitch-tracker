@@ -22,6 +22,7 @@ namespace SDL2
 
         int ascent();
         int descent();
+        int lineSkip();
 
     private:
         TTF_Font *mFont;

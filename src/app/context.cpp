@@ -130,13 +130,6 @@ void App::Context::renderApp(SDL2::Context *sdl)
         if (rectRight.w > helpTextMaxrw) {
             helpTextMaxrw = rectRight.w;
         }
-
-        if (rectLeft.h > helpTextMaxh) {
-            helpTextMaxh = rectLeft.h;
-        } 
-        if (rectRight.h > helpTextMaxh) {
-            helpTextMaxh = rectRight.h;
-        }
     }
 
     int helpTextY = 10;
@@ -156,7 +149,7 @@ void App::Context::renderApp(SDL2::Context *sdl)
         stringTex = mUiFontTiny->renderText(sdl->renderer(), helpText[i * 2 + 1], helpTextRightColor);
         SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &rectRight);
 
-        helpTextY += helpTextMaxh;
+        helpTextY += mUiFontSmall->lineSkip(); 
     }
     
     // Current pitch estimate.
