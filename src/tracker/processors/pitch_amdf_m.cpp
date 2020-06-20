@@ -23,13 +23,18 @@ float Processors::pitchAMDF_M(const ArrayXf &x, int sampleRate, float minimumPit
     const double Vmin = amd.minCoeff();
     const double theta = alpha * (Vmax + Vmin);
 
-    std::vector<bool> amd1b(maxShift);
+    std::vector<uint32_t> amd1b(maxShift / 32 + 1); 
+    
+    for (int ind = 0; ind < maxShift / 32 + 1; ++ind) {
+        uint32_t v = 0U;
 
-    for (int i = 0; i < maxShift; ++i) {
-        if (amd(i) <= theta)
-            amd1b[i] = true;
-        else
-            amd1b[i] = false;
+        for (int bit = 0; bit < 32; ++bit) {
+            int i = ind * 32 + bit;
+            if (i < maxShift && amd(i) <= theta)
+                v |= 1U << bit;
+        }
+
+        amd1b[ind] = v;
     }
 
     // Calculate the autocorrelation function of the one-bit signal.
@@ -39,7 +44,13 @@ float Processors::pitchAMDF_M(const ArrayXf &x, int sampleRate, float minimumPit
     for (int i = 0; i < maxShift; ++i) {
         int v = 0;
         for (int j = 0; j < maxShift - i; ++j) {
-            if (amd1b[j] && amd1b[i + j])
+            int ind1 = j / 32;
+            int bit1 = j % 32;
+
+            int ind2 = (i + j) / 32;
+            int bit2 = (i + j) % 32;
+
+            if (amd1b[ind1] & (1U << bit1) && amd1b[ind2] & (1U << bit2))
                 v++;
         }
         ac(i) = v;
