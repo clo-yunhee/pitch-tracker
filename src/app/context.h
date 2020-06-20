@@ -44,6 +44,7 @@ namespace App
         SDL2::Font *mUiFontBig;
         SDL2::Font *mUiFontMedium;
         SDL2::Font *mUiFontSmall;
+        SDL2::Font *mUiFontTiny;
 
         PitchLimitMode mPitchLimitMode;
         int mPitchLimit;

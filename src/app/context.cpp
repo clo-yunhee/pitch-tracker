@@ -10,6 +10,7 @@ App::Context::Context(int sampleRate)
       mUiFontBig(new SDL2::Font("Montserrat.ttf", 32)),
       mUiFontMedium(new SDL2::Font("Montserrat.ttf", 24)),
       mUiFontSmall(new SDL2::Font("Montserrat.ttf", 18)),    
+      mUiFontTiny(new SDL2::Font("Montserrat.ttf", 14)),    
       mPitchLimit(170),
       mPitchLimitMode(PITCHLIMIT_MIN),
       mBgFadeTime(100),
@@ -25,6 +26,7 @@ App::Context::~Context()
     delete mUiFontBig;
     delete mUiFontMedium;
     delete mUiFontSmall;
+    delete mUiFontTiny;
     delete mAudio;
     delete mTrackerContext;
 }
@@ -99,6 +101,64 @@ void App::Context::renderApp(SDL2::Context *sdl)
         SDL_RenderFillRect(sdl->renderer(), &dst);
     }
 
+    // Help text.
+    SDL_Color helpTextLeftColor = {149, 149, 145, 255};
+    SDL_Color helpTextRightColor = {255, 121, 198, 255};
+    std::vector<const char *> helpText{
+        "Floor/ceiling: ",
+            "M / One-finger tap",
+        "Limit down: ",
+            "Up / Scroll up",
+        "Limit up: ",
+            "Down / scroll down",
+        "Tracer on/off: ",
+            "T / Two-finger tap",
+    };
+    int helpTextCount = helpText.size();
+    std::vector<SDL_Rect> helpTextRect(helpTextCount);
+
+    int helpTextMaxrw = 0;
+    int helpTextMaxh = 0;
+
+    for (int i = 0; i < helpTextCount / 2; ++i) {
+        SDL_Rect &rectLeft = helpTextRect.at(i * 2);
+        SDL_Rect &rectRight = helpTextRect.at(i * 2 + 1);
+
+        mUiFontSmall->querySize(helpText[i * 2], &rectLeft.w, &rectLeft.h);
+        mUiFontTiny->querySize(helpText[i * 2 + 1], &rectRight.w, &rectRight.h);
+
+        if (rectRight.w > helpTextMaxrw) {
+            helpTextMaxrw = rectRight.w;
+        }
+
+        if (rectLeft.h > helpTextMaxh) {
+            helpTextMaxh = rectLeft.h;
+        } 
+        if (rectRight.h > helpTextMaxh) {
+            helpTextMaxh = rectRight.h;
+        }
+    }
+
+    int helpTextY = 10;
+    for (int i = 0; i < helpTextCount / 2; ++i) {
+        SDL_Rect &rectLeft = helpTextRect.at(i * 2);
+        SDL_Rect &rectRight = helpTextRect.at(i * 2 + 1);
+
+        rectRight.x = (targetWidth - 1) - 15 - helpTextMaxrw;
+        rectLeft.x = rectRight.x - rectLeft.w;
+
+        rectLeft.y = helpTextY;
+        rectRight.y = helpTextY - mUiFontSmall->descent();
+    
+        stringTex = mUiFontSmall->renderText(sdl->renderer(), helpText[i * 2], helpTextLeftColor);
+        SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &rectLeft);
+
+        stringTex = mUiFontTiny->renderText(sdl->renderer(), helpText[i * 2 + 1], helpTextRightColor);
+        SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &rectRight);
+
+        helpTextY += helpTextMaxh;
+    }
+    
     // Current pitch estimate.
     if (pitch != 0) {
         snprintf(string, maxLen, "%d", (int) mTrackerContext->pitch());

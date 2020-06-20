@@ -51,3 +51,12 @@ void SDL2::Font::querySize(const char *text, int *w, int *h)
     }
 }
 
+int SDL2::Font::ascent()
+{
+    return TTF_FontAscent(mFont);
+}
+
+int SDL2::Font::descent()
+{
+    return TTF_FontDescent(mFont);
+}

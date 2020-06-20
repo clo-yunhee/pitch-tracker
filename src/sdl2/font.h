@@ -20,6 +20,9 @@ namespace SDL2
     
         void querySize(const char *text, int *w, int *h);
 
+        int ascent();
+        int descent();
+
     private:
         TTF_Font *mFont;
 
