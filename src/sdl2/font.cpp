@@ -33,7 +33,7 @@ SDL2::Font::~Font()
 
 SDL2::TexturePtr SDL2::Font::renderText(SDL_Renderer *renderer, const char *text, const SDL_Color color)
 {
-    SDL_Surface *surface = TTF_RenderText_Blended(mFont, text, color);
+    SDL_Surface *surface = TTF_RenderUTF8_Blended(mFont, text, color);
     if (surface == nullptr) {
         std::cerr << "TTF_RenderText_Blended() error: " << TTF_GetError() << std::endl;
         exit(EXIT_FAILURE);  

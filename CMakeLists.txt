@@ -39,22 +39,17 @@ set(SOURCES
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-find_package(SDL2 REQUIRED)
-find_package(Eigen3 REQUIRED NO_MODULE)
-find_package(FFTW REQUIRED DOUBLE_LIB)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL_ttf REQUIRED SDL2_ttf)
+pkg_check_modules(SDL2 REQUIRED sdl2 SDL2_ttf)
+pkg_check_modules(Eigen3 REQUIRED eigen3)
+pkg_check_modules(FFTW REQUIRED fftw3)
 
-if(NOT SDL2_FOUND)
-    message(FATAL_ERROR "SDL2 not found")
+include_directories(${SDL2_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS})
+link_libraries(Threads::Threads ${SDL2_LDFLAGS} ${Eigen3_LDFLAGS} ${FFTW_LDFLAGS})
+
+if(ANDROID)
+    add_library(pitch-tracker SHARED ${SOURCES})
+else()
+    add_executable(pitch-tracker ${SOURCES})
 endif()
-
-if(NOT Eigen3_FOUND)
-    message(FATAL_ERROR "Eigen3 not found")
-endif()
-
-include_directories(${SDL2_INCLUDE_DIRS} ${SDL_ttf_INCLUDE_DIRS})
-link_libraries(Threads::Threads ${SDL2_LIBRARIES} Eigen3::Eigen ${FFTW_LIBRARIES} ${SDL_ttf_LIBRARIES})
-
-add_executable(pitch-tracker ${SOURCES})
