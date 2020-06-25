@@ -7,6 +7,8 @@
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include <list>
+#include <vector>
 
 namespace Tracker
 {
@@ -19,6 +21,7 @@ namespace Tracker
         virtual void onNewAudio(const Eigen::ArrayXf &data);
 
         float pitch();
+        std::vector<float> pitches();
 
     private:
         void performAnalysis(const Eigen::ArrayXf &data);
@@ -32,6 +35,9 @@ namespace Tracker
         std::mutex mDataLock;
 
         std::atomic<float> mPitch;
+
+        std::list<float> mPitches;
+        std::mutex mPitchesLock;
     };
 }
 

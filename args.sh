@@ -41,7 +41,8 @@ esac
 
 if [[ $BUILD == android-* ]];
 then
-    ANDROID_NDK=$ANDROID_NDK
+    export ANDROID_HOME=$ANDROID_NDK/../..
+    export ANDROID_NDK_HOME=$ANDROID_NDK
     ANDROID_API=30
     ANDROID_PLATFORM=android-$ANDROID_API
     

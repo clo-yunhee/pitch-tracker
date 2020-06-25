@@ -11,4 +11,4 @@ cd ../build/org.libsdl/app
 
 rm -rf jni/src
 ln -s $DIR/SDL2_ttf jni/
-#ln -s $DIR/SDL2_ttf/external/freetype-2.9.1 app/jni/freetype
+ln -s $DIR/SDL2_gfx jni/

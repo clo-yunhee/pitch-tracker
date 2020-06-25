@@ -5,7 +5,7 @@
 using namespace Eigen;
 
 Tracker::Context::Context(int sampleRate)
-    : mSampleRate(sampleRate), mContinue(true)
+    : mSampleRate(sampleRate), mContinue(true), mPitches(200, 0.0F)
 {
     mData.setZero(512);
 
@@ -58,4 +58,13 @@ void Tracker::Context::onNewAudio(const ArrayXf &data)
 float Tracker::Context::pitch()
 {
     return mPitch.load();
+}
+
+std::vector<float> Tracker::Context::pitches()
+{
+    mPitchesLock.lock();
+    std::vector<float> copy(mPitches.begin(), mPitches.end());
+    mPitchesLock.unlock();
+
+    return copy;
 }

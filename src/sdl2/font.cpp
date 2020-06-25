@@ -13,6 +13,7 @@ SDL2::Font::Font(const char *name, int size)
             exit(EXIT_FAILURE);
         }
     }
+
     mFont = TTF_OpenFont(name, size);
     if (mFont == nullptr) {
         std::cerr << "TTF_OpenFont() error: " << TTF_GetError() << std::endl;
@@ -59,6 +60,11 @@ int SDL2::Font::ascent()
 int SDL2::Font::descent()
 {
     return TTF_FontDescent(mFont);
+}
+
+int SDL2::Font::height()
+{
+    return TTF_FontHeight(mFont);
 }
 
 int SDL2::Font::lineSkip()

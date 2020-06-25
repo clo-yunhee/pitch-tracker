@@ -2,6 +2,7 @@
 #define SDL2_SDL2_H
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL2_gfxPrimitives.h>
 #include <memory>
 
 namespace SDL2

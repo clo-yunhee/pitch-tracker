@@ -14,9 +14,18 @@ namespace SDL2
 
         void createWindow(const char *title, int x, int y, int w, int h, Uint32 windowFlags, Uint32 rendererFlags);
         void destroyWindow();
+
+        void openHaptic();
+        void closeHaptic();
+        void rumblePlay(float strength, Uint32 length);
+        void rumbleStop();
        
         void renderClear();
         void renderPresent();
+
+        float windowDisplayDpi();
+        int dipSizeInPixels(int dip);
+        void windowSize(int *w, int *h);
 
     private:
         inline SDL_Window *window() { return mWindow; }
@@ -24,6 +33,8 @@ namespace SDL2
 
         SDL_Window *mWindow;
         SDL_Renderer *mRenderer;
+
+        SDL_Haptic *mHaptic;
         
         friend void App::Context::renderApp(SDL2::Context *sdl);
     };

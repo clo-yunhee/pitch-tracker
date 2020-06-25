@@ -41,7 +41,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL2 REQUIRED sdl2 SDL2_ttf)
+pkg_check_modules(SDL2 REQUIRED sdl2 SDL2_ttf SDL2_gfx)
 pkg_check_modules(Eigen3 REQUIRED eigen3)
 pkg_check_modules(FFTW REQUIRED fftw3)
 

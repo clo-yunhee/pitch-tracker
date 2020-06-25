@@ -23,20 +23,30 @@ namespace App
     class Context
     {
     public:
-        Context(int sampleRate);
+        Context(SDL2::Context *sdl, int sampleRate);
         ~Context();
 
-        void handleEvent(const SDL_Event *ev);
+        void handleEvent(SDL2::Context *sdl, const SDL_Event *ev);
         void renderApp(SDL2::Context *sdl);
 
         bool shouldContinue() const;
+        bool isPaused() const;
 
     private:
         void handleKeydownEvent(const SDL_Keycode key);
         void handleKeyupEvent(const SDL_Keycode key);
         void handleMousewheelEvent(const int y);
+        void handleFingermotionEvent(SDL2::Context *sdl, const float dx, const float dy);
+        void handleFingerdownEvent(const Uint32 timestamp, const float x, const float y);
+        void handleFingerupEvent(const Uint32 timestamp, const float x, const float y);
+
+        void setPitchLimit(const int newPitchLimit);
+        void togglePitchLimitMode();
+
+        void togglePitchGraph();
 
         std::atomic<bool> mContinue;
+        std::atomic<bool> mPaused;
 
         SDL2::Audio *mAudio;
         Tracker::Context *mTrackerContext;
@@ -49,11 +59,15 @@ namespace App
         PitchLimitMode mPitchLimitMode;
         int mPitchLimit;
 
+        bool mShowGraph;
+
         int mBgLastTime;
         int mBgFadeTime;
         float mBgFrac;
         Uint8 mBgAlpha;
 
+        Uint32 mTouchTime;
+        int mTouchAbsDx, mTouchAbsDy;
     };
 }
 
