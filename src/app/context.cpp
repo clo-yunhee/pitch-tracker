@@ -8,10 +8,12 @@ App::Context::Context(SDL2::Context *sdl, int sampleRate)
       mPaused(false),
       mAudio(new SDL2::Audio(sampleRate)),
       mTrackerContext(new Tracker::Context(sampleRate)),
-      mUiFontBig(new SDL2::Font("Montserrat.ttf", sdl->dipSizeInPixels(32))),
-      mUiFontMedium(new SDL2::Font("Montserrat.ttf", sdl->dipSizeInPixels(24))),
-      mUiFontSmall(new SDL2::Font("Montserrat.ttf", sdl->dipSizeInPixels(18))),
-      mUiFontTiny(new SDL2::Font("Montserrat.ttf", sdl->dipSizeInPixels(14))),
+      mCurrentDpi(-1),
+      mTargetDpi(96),
+      mUiSizeBig(32),
+      mUiSizeMedium(28),
+      mUiSizeSmall(24),
+      mUiSizeTiny(20),
       mPitchLimit(170),
       mPitchLimitMode(PITCHLIMIT_MIN),
       mShowGraph(true),
@@ -33,6 +35,21 @@ App::Context::~Context()
     delete mTrackerContext;
 }
 
+void App::Context::handleIdle(SDL2::Context *sdl)
+{
+    // Rumble if pitch is outside limits.
+    float pitch = mTrackerContext->pitch();
+
+    if  (pitch != 0 &&
+            ((mPitchLimitMode == PITCHLIMIT_MIN && pitch <= mPitchLimit)
+                || (mPitchLimitMode == PITCHLIMIT_MAX && pitch >= mPitchLimit))) {
+        sdl->rumblePlay(50);
+    }
+    else {
+        sdl->rumbleStop();
+    }  
+}
+
 void App::Context::handleEvent(SDL2::Context *sdl, const SDL_Event *ev)
 {
     if (ev->type == SDL_QUIT
@@ -46,15 +63,6 @@ void App::Context::handleEvent(SDL2::Context *sdl, const SDL_Event *ev)
     }
     else if (ev->type == SDL_APP_DIDENTERFOREGROUND) {
         mPaused.store(false);
-    }
-
-    // Rumble if pitch is outside limits.
-    float pitch = mTrackerContext->pitch();
-
-    if  (pitch != 0 &&
-            ((mPitchLimitMode == PITCHLIMIT_MIN && pitch <= mPitchLimit)
-                || (mPitchLimitMode == PITCHLIMIT_MAX && pitch >= mPitchLimit))) {
-        sdl->rumblePlay(0.8, 100);
     }
 
     if (mPaused.load()) {
@@ -89,9 +97,30 @@ void App::Context::handleEvent(SDL2::Context *sdl, const SDL_Event *ev)
 
 void App::Context::renderApp(SDL2::Context *sdl)
 {
-    int targetWidth, targetHeight;
-    sdl->windowSize(&targetWidth, &targetHeight);
+    int windowWidth, windowHeight;
+    sdl->windowSize(&windowWidth, &windowHeight);
 
+    int dpi = sdl->windowDisplayDpi();
+
+#define SCALED(sz) ((sz) * (dpi) / (mTargetDpi))
+
+    std::cout << "Screen dimensions: " << (25.4 * windowWidth / dpi) << " x " << (25.4 * windowHeight / dpi) << std::endl;
+
+    // mm = 25.4 * size / dpi
+    // size = dpi / (25.4 * mm)
+
+    if (dpi != mCurrentDpi) {
+        // DPI changed.
+        mCurrentDpi = dpi;
+        mUiFontBig = new SDL2::Font("Montserrat.ttf", SCALED(mUiSizeBig));
+        mUiFontMedium = new SDL2::Font("Montserrat.ttf", SCALED(mUiSizeMedium));
+        mUiFontSmall = new SDL2::Font("Montserrat.ttf", SCALED(mUiSizeSmall));
+        mUiFontTiny = new SDL2::Font("Montserrat.ttf", SCALED(mUiSizeTiny));
+    }
+    int targetWidth = SCALED(windowWidth);
+    int targetHeight = SCALED(windowHeight);
+    SDL_RenderSetLogicalSize(sdl->renderer(), targetWidth, targetHeight);
+    
     constexpr int maxLen = 64;
     char string[maxLen];
     SDL2::TexturePtr stringTex;
@@ -170,11 +199,11 @@ void App::Context::renderApp(SDL2::Context *sdl)
         SDL_Rect &rectLeft = helpTextRect.at(i * 2);
         SDL_Rect &rectRight = helpTextRect.at(i * 2 + 1);
 
-        rectRight.x = (targetWidth - 1) - 15 - helpTextMaxrw;
+        rectRight.x = (targetWidth - 1) - SCALED(15) - helpTextMaxrw;
         rectLeft.x = rectRight.x - rectLeft.w;
 
         rectLeft.y = helpTextY;
-        rectRight.y = helpTextY - mUiFontSmall->descent();
+        rectRight.y = helpTextY + mUiFontSmall->descent() + mUiFontSmall->height() - mUiFontTiny->ascent();
     
         stringTex = mUiFontSmall->renderText(sdl->renderer(), helpText[i * 2], helpTextLeftColor);
         SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &rectLeft);
@@ -204,10 +233,10 @@ void App::Context::renderApp(SDL2::Context *sdl)
   
     color = {149, 149, 145, 255};
     stringTex = mUiFontMedium->renderText(sdl->renderer(), " Hz", color);
-    dst = {dst.x + dst.w, targetHeight / 2 - h / 2, w, h};
+    dst = {dst.x + dst.w, dst.y + mUiFontBig->descent() + mUiFontBig->height() - mUiFontMedium->ascent(), w, h};
     SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &dst);
 
-    int y2 = dst.y + 25 + mUiFontSmall->lineSkip();
+    int y2 = dst.y + SCALED(15) + mUiFontSmall->lineSkip();
 
     // Pitch floor alert text.
     if (mBgAlpha >= 12) {
@@ -230,10 +259,10 @@ void App::Context::renderApp(SDL2::Context *sdl)
     // Pitch graph.
     if (mShowGraph) {
         color = {129, 128, 232, 192};
-        int wg = std::min(sdl->dipSizeInPixels(320), (targetWidth * 2) / 3);
-        int hg = sdl->dipSizeInPixels(80);
+        int wg = std::min(SCALED(720), (targetWidth * 2) / 3);
+        int hg = std::min(SCALED(80), y2 - targetHeight / 2 + SCALED(10));
         int xg = targetWidth / 2 - wg / 2;
-        int yg = y2 + 30;
+        int yg = y2 + SCALED(20);
         dst = {xg, yg, wg, hg};
         SDL_SetRenderDrawBlendMode(sdl->renderer(), SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(sdl->renderer(), color.r, color.g, color.b, color.a);
@@ -281,24 +310,22 @@ void App::Context::renderApp(SDL2::Context *sdl)
         struct PointF { float x, y; };
         std::vector<PointF> path;
 
-        float scale = 4;
-        float thickness = 3;
+        float prevScale;
+        float thickness = SCALED(3);
 
         for (int i = 0; i < pitches.size(); ++i) {
             float fi = pitches[i];
 
             if ((fi == 0 || i == (pitches.size() - 1)) && path.size() > 0) {
-                SDL_RenderSetScale(sdl->renderer(), 1.0F / scale, 1.0F / scale);
                 for (int j = 0; j < path.size() - 1; ++j) {
                     thickLineRGBA(
                             sdl->renderer(),
-                            path[j].x * scale, path[j].y * scale,
-                            path[j + 1].x * scale, path[j + 1].y * scale,
-                            thickness * scale,
+                            path[j].x, path[j].y,
+                            path[j + 1].x, path[j + 1].y,
+                            thickness,
                             color.r, color.g, color.b, color.a
                     );
                 }
-                SDL_RenderSetScale(sdl->renderer(), 1, 1);
 
                 path.clear();
             }
@@ -325,7 +352,7 @@ void App::Context::renderApp(SDL2::Context *sdl)
             }
             snprintf(string, maxLen, "%d", (int) minPitch);
             mUiFontTiny->querySize(string, &dst.w, &dst.h);
-            dst.x = xg - 4 - dst.w;
+            dst.x = xg - SCALED(4) - dst.w;
             dst.y = yMinPitch - dst.h / 2;
             stringTex = mUiFontTiny->renderText(sdl->renderer(), string, color);
             SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &dst);
@@ -338,7 +365,7 @@ void App::Context::renderApp(SDL2::Context *sdl)
             }
             snprintf(string, maxLen, "%d", (int) maxPitch);
             mUiFontTiny->querySize(string, &dst.w, &dst.h);
-            dst.x = xg - 4 - dst.w;
+            dst.x = xg - SCALED(4) - dst.w;
             dst.y = yMaxPitch - dst.h / 2;
             stringTex = mUiFontTiny->renderText(sdl->renderer(), string, color);
             SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &dst);
@@ -349,7 +376,7 @@ void App::Context::renderApp(SDL2::Context *sdl)
                 color = {255, 85, 85, 255};
                 snprintf(string, maxLen, "%d", (int) mPitchLimit);
                 mUiFontTiny->querySize(string, &dst.w, &dst.h);
-                dst.x = xg - 4 - dst.w;
+                dst.x = xg - SCALED(4) - dst.w;
                 dst.y = yLimit - dst.h / 2;
                 stringTex = mUiFontTiny->renderText(sdl->renderer(), string, color);
                 SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &dst);
@@ -371,7 +398,7 @@ void App::Context::renderApp(SDL2::Context *sdl)
     color = {149, 149, 145, 255};
     stringTex = mUiFontSmall->renderText(sdl->renderer(), string, color);
     dst.x = 15;
-    dst.y = (targetHeight - 1) - 10 - dst.h;
+    dst.y = (targetHeight - 1) - SCALED(10) - dst.h;
     SDL_RenderCopy(sdl->renderer(), stringTex.get(), nullptr, &dst);
 
     snprintf(string, maxLen, "%d", mPitchLimit);

@@ -1,0 +1,59 @@
+FROM ubuntu:focal
+ENV container docker
+
+# Install MXE dependencies.
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get -y update && \
+        apt-get -y install \
+            autoconf \
+            automake \
+            autopoint \
+            bash \
+            bison \
+            bzip2 \
+            flex \
+            g++ \
+            g++-multilib \
+            gettext \
+            git \
+            gperf \
+            intltool \
+            libc6-dev-i386 \
+            libgdk-pixbuf2.0-dev \
+            libltdl-dev \
+            libssl-dev \
+            libtool-bin \
+            libxml-parser-perl \
+            lzip \
+            make \
+            openssl \
+            p7zip-full \
+            patch \
+            perl \
+            python \
+            ruby \
+            sed \
+            unzip \
+            wget \
+            xz-utils
+
+RUN git clone https://github.com/mxe/mxe.git
+RUN cd /mxe && \
+        make JOBS=$(nproc) STRIP_LIB=1 \
+            MXE_PLUGIN_DIRS=plugins/gcc10 \
+            MXE_TARGETS='i686-w64-mingw32.shared x86_64-w64-mingw32.shared' \
+            gcc fftw sdl2 sdl2_ttf sdl2_gfx eigen \
+                && \
+        make clean-junk
+
+RUN mkdir -p /usr/local/bin
+COPY deploy-windows.sh /usr/local/bin
+ENV MXE=/mxe PATH=/mxe/usr/bin:$PATH
+CMD cd /build && \
+        if [ $target = win32 ]; then export cross=i686-w64-mingw32.shared- ; fi && \
+        if [ $target = win64 ]; then export cross=x86_64-w64-mingw32.shared- ; fi && \
+        ${cross}cmake \
+            -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
+            /src && \
+        make -j$(nproc) && \
+        deploy-windows.sh $target

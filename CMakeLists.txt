@@ -4,6 +4,9 @@ project(pitch-tracker)
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_support")
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 set(CMAKE_CXX_FLAGS "-fPIC -ftree-vectorize")
 set(CMAKE_CXX_FLAGS_DEBUG           "-O0 -g")
 set(CMAKE_CXX_FLAGS_RELEASE         "-O3 -g0")

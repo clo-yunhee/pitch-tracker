@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
             "Pitch tracker beta",
             SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
             853, 480,
-            SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE,
+            SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI,
             SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
     );
 
@@ -27,6 +27,8 @@ int main(int argc, char *argv[])
         while (SDL_PollEvent(&ev)) {
             app.handleEvent(&sdl, &ev);
         }
+
+        app.handleIdle(&sdl);
 
         if (!app.isPaused()) {
             sdl.renderClear();

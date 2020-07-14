@@ -1,0 +1,38 @@
+FROM ubuntu:focal AS build
+ENV container docker
+
+# Install build tools.
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get -y update && \
+        apt-get install -y \
+            build-essential cmake clang \
+            gcc g++ zlib1g-dev libmpc-dev libmpfr-dev libgmp-dev \
+            git wget patch \
+            libssl-dev \
+            liblzma-dev \
+            libxml2-dev \
+            libllvm7
+
+# Install osxcross.
+RUN git clone https://github.com/tpoechtrager/osxcross
+COPY MacOSX10.15.sdk.tar.xz /osxcross/tarballs
+RUN cd /osxcross && UNATTENDED=1 ./build.sh
+
+ENV PATH=/osxcross/target/bin:$PATH
+ENV host=x86_64-apple-darwin19 MACOSX_DEPLOYMENT_TARGET=10.10
+
+# Install packages
+RUN echo 4 | osxcross-macports install fftw-3 libsdl2 libsdl2_ttf libsdl2_gfx eigen3
+
+RUN apt-get -y install pkg-config hfsprogs
+
+COPY deploy-macos.sh /usr/local/bin
+COPY macos-toolchain.cmake /osxcross/target/toolchain.cmake
+
+CMD cd /build && \
+        ${host}-cmake \
+            -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
+            /src && \
+        make -j$(nproc) && \
+        deploy-macos.sh 
+

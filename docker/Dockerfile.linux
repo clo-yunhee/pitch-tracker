@@ -1,0 +1,117 @@
+FROM centos:6 AS build
+ENV container docker
+
+# Install git, wget, and gcc 4
+RUN yum -y install git wget gcc gcc-c++
+
+# Download and build newer gcc
+ENV ver=10.1.0
+RUN wget http://ftpmirror.gnu.org/gcc/gcc-$ver/gcc-$ver.tar.gz && \
+	tar xf gcc-$ver.tar.gz
+WORKDIR /gcc-$ver
+RUN contrib/download_prerequisites
+RUN mkdir build && cd build && \
+	../configure \
+	    --prefix=/usr/local \
+	    --disable-multilib \
+            --enable-languages=c,c++,fortran && \
+	make -j$(nproc) && \
+	make install
+
+WORKDIR /
+
+# Install AppImageKit.
+RUN wget https://github.com/AppImage/AppImageKit/releases/download/12/appimagetool-x86_64.AppImage
+RUN cp appimagetool-x86_64.AppImage /usr/local/bin/appimagetool && \
+        chmod +x /usr/local/bin/appimagetool
+
+# Build pkgconfig
+ENV ver=0.29.2
+RUN wget https://pkg-config.freedesktop.org/releases/pkg-config-$ver.tar.gz && \
+        tar xf pkg-config-$ver.tar.gz
+RUN cd pkg-config-$ver && \
+        mkdir build && \
+        cd build && \
+        ../configure --with-internal-glib --prefix=/usr/local && \
+        make install -j$(nproc)
+
+# Build cmake
+ENV ver=3.17.3
+RUN wget https://github.com/Kitware/CMake/releases/download/v$ver/cmake-$ver-Linux-x86_64.tar.gz && \
+        tar xf cmake-$ver-Linux-x86_64.tar.gz && \
+        cp -r cmake-$ver-Linux-x86_64/* /usr/local
+
+# Build eigen3
+ENV ver=3.3.7
+RUN wget https://gitlab.com/libeigen/eigen/-/archive/$ver/eigen-$ver.tar.gz && \
+        tar xf eigen-$ver.tar.gz
+RUN cd eigen-$ver && \
+        mkdir build && \
+        cd build && \
+        cmake -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
+        make install -j$(nproc)
+
+# Build fftw3
+ENV ver=3.3.8
+RUN wget http://www.fftw.org/fftw-$ver.tar.gz && \
+        tar xf fftw-$ver.tar.gz
+RUN cd fftw-$ver && \
+        mkdir build && \
+        cd build && \
+        ../configure --enable-shared --disable-static --prefix=/usr/local && \
+        make install -j$(nproc)
+
+# Build SDL2
+ENV ver=2.0.12
+RUN wget https://www.libsdl.org/release/SDL2-$ver.tar.gz && \
+        tar xf SDL2-$ver.tar.gz
+RUN cd SDL2-$ver && \
+        mkdir build && \
+        cd build && \
+        ../configure --enable-shared --disable-static --prefix=/usr/local && \
+        make install -j$(nproc)
+
+# Build Freetype2
+ENV ver=2.10.2
+RUN wget https://download.savannah.gnu.org/releases/freetype/freetype-$ver.tar.gz && \
+        tar xf freetype-$ver.tar.gz
+RUN cd freetype-$ver && \
+        mkdir build && \
+        cd build && \
+        ../configure --enable-shared --disable-static --enable-freetype-config --prefix=/usr/local && \
+        make install -j$(nproc)
+
+# Build SDL2_ttf 
+ENV ver=2.0.15
+RUN wget https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-$ver.tar.gz && \
+        tar xf SDL2_ttf-$ver.tar.gz
+RUN cd SDL2_ttf-$ver && \
+        mkdir build && \
+        cd build && \
+        ../configure --enable-shared --disable-static --disable-freetypetest --prefix=/usr/local && \
+        make install -j$(nproc)
+
+# Build SDL2_gfx
+ENV ver=1.0.4
+RUN wget http://www.ferzkopp.net/Software/SDL2_gfx/SDL2_gfx-$ver.tar.gz && \
+        tar xf SDL2_gfx-$ver.tar.gz
+RUN cd SDL2_gfx-$ver && \
+        mkdir build && \
+        cd build && \
+        ../configure --enable-shared --disable-static --prefix=/usr/local && \
+        make install -j$(nproc)
+
+FROM centos:6
+COPY --from=build /usr/local /usr/local
+
+RUN yum -y install glibc-devel
+
+COPY deploy-linux.sh /usr/local/bin
+CMD cd /build && \
+        cmake \
+            -DCMAKE_C_COMPILER=/usr/local/bin/gcc \
+            -DCMAKE_CXX_COMPILER=/usr/local/bin/g++ \
+            -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
+            /src && \
+        make -j$(nproc) && \
+        deploy-linux.sh

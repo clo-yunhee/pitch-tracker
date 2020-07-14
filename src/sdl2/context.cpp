@@ -1,5 +1,12 @@
 #include "context.h"
 #include <iostream>
+#ifdef __ANDROID__
+#   include <jni.h>
+#endif
+#ifdef _WIN32
+#   include <windows.h>
+#   include <shellscalingapi.h>
+#endif
 
 SDL2::Context::Context(Uint32 initFlags)
     : mWindow(nullptr), mRenderer(nullptr), mHaptic(nullptr)
@@ -9,6 +16,40 @@ SDL2::Context::Context(Uint32 initFlags)
         exit(EXIT_FAILURE);
     }
 
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
+
+#ifdef _WIN32
+    void* userDLL;
+    BOOL(WINAPI *SetProcessDPIAware)(void); // Vista and later
+    void* shcoreDLL;
+    HRESULT(WINAPI *SetProcessDpiAwareness)(PROCESS_DPI_AWARENESS dpiAwareness); // Windows 8.1 and later
+
+    userDLL = SDL_LoadObject("USER32.DLL");
+    if (userDLL) {
+        SetProcessDPIAware = (BOOL(WINAPI *)(void)) SDL_LoadFunction(userDLL, "SetProcessDPIAware");
+    }
+
+    shcoreDLL = SDL_LoadObject("SHCORE.DLL");
+    if (shcoreDLL) {
+        SetProcessDpiAwareness = (HRESULT(WINAPI *)(PROCESS_DPI_AWARENESS)) SDL_LoadFunction(shcoreDLL, "SetProcessDpiAwareness");
+    }
+
+    if (SetProcessDpiAwareness) {
+        /* Try Windows 8.1+ version */
+        HRESULT result = SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+        SDL_Log("result: %x (S_OK = %x, E_INVALIDARG = %x, E_ACCESSDENIED = %x", result, S_OK, E_INVALIDARG, E_ACCESSDENIED);
+        
+        SDL_Log("called SetProcessDpiAwareness: %d", (result == S_OK) ? 1 : 0);
+    }
+    else if (SetProcessDPIAware) {
+        /* Try Vista - Windows 8 version.
+        This has a constant scale factor for all monitors.
+        */
+        BOOL success = SetProcessDPIAware();
+        SDL_Log("called SetProcessDPIAware: %d", (int)success);
+    }
+#endif
 }
 
 SDL2::Context::~Context()
@@ -60,6 +101,7 @@ void SDL2::Context::openHaptic()
     if (SDL_NumHaptics() >= 1) {
         mHaptic = SDL_HapticOpen(0);
         if (!(SDL_HapticRumbleSupported(mHaptic) && SDL_HapticRumbleInit(mHaptic) == 0)) {
+            std::cerr << "SDL_HapticRumbleSupported() or SDL_HapticRumbleInit() error: " << SDL_GetError() << std::endl;
             SDL_HapticClose(mHaptic);
             mHaptic = nullptr;
             return;
@@ -75,18 +117,38 @@ void SDL2::Context::closeHaptic()
     }
 }
 
-void SDL2::Context::rumblePlay(float strength, Uint32 length)
+void SDL2::Context::rumblePlay(Uint32 length)
 {
+#ifdef __ANDROID__
+    JNIEnv *env = (JNIEnv *) SDL_AndroidGetJNIEnv();
+    jobject activity = (jobject) SDL_AndroidGetActivity();
+    jclass clazz(env->GetObjectClass(activity));
+    jmethodID methodId = env->GetMethodID(clazz, "vibeStart", "(J)V");
+    env->CallVoidMethod(activity, methodId, (jlong) length);
+    env->DeleteLocalRef(activity);
+    env->DeleteLocalRef(clazz);
+#else
     if (mHaptic != nullptr) {
-        SDL_HapticRumblePlay(mHaptic, strength, length);
+        SDL_HapticRumblePlay(mHaptic, 0.25, length);
     }
+#endif
 }
 
 void SDL2::Context::rumbleStop()
 {
+#ifdef __ANDROID__
+    JNIEnv *env = (JNIEnv *) SDL_AndroidGetJNIEnv();
+    jobject activity = (jobject) SDL_AndroidGetActivity();
+    jclass clazz(env->GetObjectClass(activity));
+    jmethodID methodId = env->GetMethodID(clazz, "vibeStop", "()V");
+    env->CallVoidMethod(activity, methodId);
+    env->DeleteLocalRef(activity);
+    env->DeleteLocalRef(clazz);
+#else
     if (mHaptic != nullptr) {
         SDL_HapticRumbleStop(mHaptic);
     }
+#endif
 }
 
 void SDL2::Context::renderClear()
@@ -119,18 +181,12 @@ float SDL2::Context::windowDisplayDpi()
     }
     
     float dpi;
-    if (SDL_GetDisplayDPI(index, nullptr, nullptr, &dpi) != 0) {
+    if (SDL_GetDisplayDPI(index, nullptr, &dpi, nullptr) != 0) {
         std::cerr << "SDL_GetDisplayDPI() error: " << SDL_GetError() << std::endl;
         exit(EXIT_FAILURE);
     }
 
     return dpi;
-}
-
-int SDL2::Context::dipSizeInPixels(int dip)
-{
-    return (int) (dip * windowDisplayDpi() / 140.0F);
-    
 }
 
 void SDL2::Context::windowSize(int *w, int *h)

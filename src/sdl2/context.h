@@ -17,14 +17,13 @@ namespace SDL2
 
         void openHaptic();
         void closeHaptic();
-        void rumblePlay(float strength, Uint32 length);
+        void rumblePlay(Uint32 length);
         void rumbleStop();
        
         void renderClear();
         void renderPresent();
 
         float windowDisplayDpi();
-        int dipSizeInPixels(int dip);
         void windowSize(int *w, int *h);
 
     private:

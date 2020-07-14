@@ -26,6 +26,7 @@ namespace App
         Context(SDL2::Context *sdl, int sampleRate);
         ~Context();
 
+        void handleIdle(SDL2::Context *sdl);
         void handleEvent(SDL2::Context *sdl, const SDL_Event *ev);
         void renderApp(SDL2::Context *sdl);
 
@@ -44,12 +45,23 @@ namespace App
         void togglePitchLimitMode();
 
         void togglePitchGraph();
+        void renderUnscaled(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Rect dst,
+                            int targetWidth, int targetHeight,
+                            int windowWidth, int windowHeight);
 
         std::atomic<bool> mContinue;
         std::atomic<bool> mPaused;
 
         SDL2::Audio *mAudio;
         Tracker::Context *mTrackerContext;
+
+        int mCurrentDpi;
+        int mTargetDpi;
+        
+        int mUiSizeBig;
+        int mUiSizeMedium;
+        int mUiSizeSmall;
+        int mUiSizeTiny;
 
         SDL2::Font *mUiFontBig;
         SDL2::Font *mUiFontMedium;
